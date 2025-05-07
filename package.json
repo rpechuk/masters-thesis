@@ -1,0 +1,17 @@
+{
+  "name": "@rpechuk/papers-mosaic-publish",
+  "description": "Ron Pechuk's master's thesis on publish-time optimizations for web-based visualizations.",
+  "scripts": {
+    "assets": "mkdirp build && cp -r assets build",
+    "clean": "rimraf .cache .temp build",
+    "prebuild": "npm run assets",
+    "build": "lpub -o build --tempDir='.temp' index.md",
+    "prewatch": "npm run assets",
+    "watch": "lpub -o build --tempDir='.temp' --watch index.md"
+  },
+  "devDependencies": {
+    "@living-papers/cli": "~0.1.9",
+    "mkdirp": "^3.0.1",
+    "rimraf": "^6.0.1"
+  }
+}
