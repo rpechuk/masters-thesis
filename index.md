@@ -138,7 +138,7 @@ Publish-time optimizations aim to minimize user-perceived latencies without exce
 Beyond these metrics, secondary considerations such as data freshness (how quickly visualizations reflect source data updates) drive optimization decisions. Optimization strategies may need to balance competing objectives for a given application.
 
 ## Data Preparation and Projection
-Data preparation transforms raw input data into forms that are faster to load and query at runtime, reducing both TTR and TTA without altering the visualized content. These concerns include:
+Data preparation transforms raw input data into forms that are faster to load and query at runtime, reducing both TTR and TTA without altering the visualized content. These strategies include:
 \vspace{-6pt}
 
 - **Column Projection**: Select only the columns needed for visualization, reducing transfer size and memory load. \vspace{-6pt}
@@ -158,16 +158,16 @@ Pre-computed assets may be transferred at load time, trading construction latenc
 A similar approach applies to other acceleration structures such as query caches and indexes.
 
 These optimizations can significantly improve TTA when load time is less than construction time.
-For pre-aggregation and related tiling methods, the impact on SC scales with the number of aggregation dimensions and resolution levels, as the number of assets can grow combinatorially across multi-view interactions.
+For pre-aggregation and related tiling methods, the impact on SC scales with the number of aggregation dimensions and resolution levels. For cross-filtering systems such as Mosaic generate these assets for each pair of interactable views, making the number of assets grow combinatorially across multi-view interactions.
 Overly aggressive pre-computation may yield high storage overhead with limited benefit if pre-computed assets remain unused.
-These diminishing returns suggest that pre-aggregation will be best applied when interaction spaces are constrained or when applied selectively to the most commonly used and/or latency sensitive interactions.
+These diminishing returns suggest that pre-aggregation is best applied when interaction spaces are constrained or when applied selectively to the most commonly used and/or latency sensitive interactions.
 
 ## Pre-rendering Visual Output
 
 Pre-rendering draws on web optimization techniques such as SSG or SSR, and involves generating static or semi-static visual outputs (SVG elements, raster images, etc) at publish time. This strategy targets TTR by reducing or eliminating the need for runtime data loading and rendering. Pre-rendering can take several forms:
 \vspace{-6pt}
 
-- **Initial Pre-rendering**: Only the initial state is pre-rendered. Dynamic content is attached at runtime via **hydration** to bind interactive logic to pre-rendered views. \vspace{-6pt}
+- **Initial Pre-rendering**: Only the initial state is pre-rendered. Dynamic content is attached at runtime via *hydration* to bind interactive logic to pre-rendered views. \vspace{-6pt}
 - **Total Pre-rendering**: All visualizations and all interaction states are pre-rendered. This is practical for visualizations with limited to no interaction and without frequent data updates. \vspace{-6pt}
 - **Mixed Pre-rendering**: A subset of selected interactions are prerendered (e.g., all options in a small menu). This is practical when the space of possible states is limited and known. \vspace{-6pt}
 
@@ -199,13 +199,13 @@ By characterizing these strategies, we provide guidance for selecting publish-ti
 
 We implement publish-time optimizations in the Mosaic architecture [@doi:10.1109/TVCG.2023.3327189], atop declarative specifications of interactive visualizations.
 Mosaic's architecture decouples specification logic from data processing by managing query execution through a central coordinator, and provides reactive primitives for linking interactions.
-This design enables publish-time optimizations to be applied either transparently (by pre-populating cache and database content) or via simple, targeted specification rewrites that reference precomputed assets.
+This design enables publish-time optimizations to be applied either transparently (by pre-populating cache and database content) or via simple, targeted specification rewrites to reference precomputed assets.
 
 ## System Overview
 
 Mosaic visualizations can be defined using data, view, and interaction specifications written in a declarative syntax.
 Our publish-time optimizations focus on YAML-based specifications, which are parsed into an abstract syntax tree (AST).
-The AST enables static analysis and specification rewriting to reference precomputed assets.
+The AST enables static analysis and specification rewriting to reference precomputed assets. This process is modeled in @fig:[TODO: ref new flow figure here].
 
 Mosaic uses a central _coordinator_, which manages query execution across multiple clients, typically backed by a DuckDB [@doi:10.1145/3299869.3320212] database.
 Query execution can occur locally in the browser (via DuckDB-WASM), on a local server, or on a remote database.
@@ -213,15 +213,24 @@ This flexibility is key to supporting publish-time workflows, as precomputed ass
 
 ## Specification Optimization and Rewriting
 
+::: figure {#implementation-flow}
+![Flow of Mosaic Publisher](assets/implementation.png)
+| Implementation flow of publish-time optimizations in Mosaic Publisher. Visualization specifications are parsed into an Abstract Syntax Tree (AST), simulated interactions trigger necessary queries, which are precomputed and materialized. The AST is rewritten to reference these assets, reducing both rendering and interaction latencies at runtime.
+\vspace{-10pt}
+:::
+
 We developed **Mosaic Publisher**, a utility that analyzes visualization specifications, simulates interactions, and rewrites data definitions to reference precomputed assets.
 Specification rewrites occur automatically based on a user-selected optimization level, incrementally applying *data preparation and projection*, *aggregate and cache pre-computation*, and *visualization pre-rendering*.
 This design allows visualization designers to benefit from publish-time optimizations while retaining their original specifications.
 
-The publisher performs the following steps.
-**Interaction Simulation**: Programmatically activate interactors and inputs on a virtual DOM to trigger all queries that could be issued during runtime interaction.
-**Query Materialization**: Execute data preparation, initial loading, and pre-aggregation queries and save the results as deployable assets.
-**AST Rewriting**: Replace data preparation queries in a specification with references to precomputed results.
-**Hydration Support**: Emit JavaScript code to populate the Mosaic cache and database with pre-computed assets. For pre-rendered views, generate additional logic to initialize interactive components at runtime.
+The publisher performs the following steps:
+
+1. **Specification Parsing**: Parse the YAML specification into an abstract syntax tree (AST) which can be rendered into a DOM using vgplot [@doi:10.1109/TVCG.2023.3327189], a visualization grammar for Mosaic-based web visualizations.
+2. **Run-time Simulation**: Render the AST into a virtual DOM, programmatically activating interactors and inputs to trigger and capture all setup and interaction queries that could be issued during runtime.
+3. **Query Materialization**: Execute data preparation, initial loading, and pre-aggregation queries saving the results as deployable assets.
+4. **AST Rewriting**: Replace data loading and preparation queries in the specification AST with references to precomputed results.
+5. **Hydration Support**: Emit JavaScript code to populate the Mosaic cache and database with pre-computed assets. For pre-rendered views, generate additional logic to initialize interactive components at runtime.
+6. **Output Generation**: Output the optimized specification as a deployable bundle containing any precomputed assets, a static HTML page, and all emitted JavaScript code.
 
 ## Challenges and Design Considerations
 
@@ -232,7 +241,7 @@ A core challenge in publish-time optimization for interactive visualizations is 
 In Mosaic, many optimizations can be applied transparently because of the coordinator's control over query generation and execution.
 For example, the coordinator's query cache, which stores the results of previously executed queries, can be pre-populated with initialization queries at publish time and loaded alongside the visualization.
 Similarly, pre-aggregated materialized views can be pre-computed and loaded into the database upon initialization. The Mosaic coordinator will then automatically use these assets rather than re-compute them.
-However, when optimizations fundamentally alter data access patterns (i.e., replacing preparation queries with precomputed data), the publisher explicitly rewrites the specification.
+However, when optimizations fundamentally alter data access patterns (e.g., replacing preparation queries with precomputed data), the publisher explicitly rewrites the specification.
 
 **Balancing Pre-rendering and Interactivity.**
 Pre-rendering reduces initial load times (TTR) but requires hydration steps to enable interactivity (TTA).
@@ -244,35 +253,36 @@ Our current hydration approach simply instantiates interactive components throug
 By leveraging Mosaic's declarative specifications, coordination mechanisms, and centralized query management, our implementation enables publish-time optimizations to be integrated seamlessly, rewriting specifications where necessary, while preserving the expressiveness and flexibility of the Mosaic system.
 The Mosaic Publisher implementation is available at _anonymized URL_.
 
+# Evaluation {#evaluation}
+
 ::: figure {#collage}
 ![Collage of Visualization Examples Used in Mosaic Publisher Evaluation](assets/collage.png)
 | Visualizations used to evaluate publish-time optimizations.
+\vspace{-10pt}
 :::
 
-# Evaluation {#evaluation}
+We evaluate the performance impact of the Mosaic Publisher across five visualization specifications (@fig:collage) selected to represent a diverse range of interaction styles, view configurations, and query complexities. These include: **airlines**, a single-view chart with a filter slider and confidence interval overlays; **property**, a raster density plot with interactive regression fits; **flights**, a basic cross-filtering example with linked histograms; **gaia** and **taxis**, complex multi-view dashboards with high-resolution rasters and multiple coordinated selections. (Both the flights and gaia example are taken from the original Mosaic paper [@doi:10.1109/TVCG.2023.3327189].) These examples cover both low and high cardinality selections, different types of interval filtering, and visualization types that stress different optimization paths.
+
+To assess the effects of each optimization category (@sec:characterization), we apply them incrementally: **none** performs all computation at runtime, **+prep** applies data preparation and projection rewrites, **+cache** further precomputes and stores both result caches and materialized aggregates for interaction updates, and **+prerender** adds initial pre-rendered visual outputs with hydration to enable interactivity.
+All benchmarks were run within Node.js v22.9.0 on a 2021 MacBook Pro laptop (14-inch, macOS 15.2) with an M1 Pro processor and 16GB RAM. The visualizations were hosted on a local server with DuckDB-WASM used as the backing database engine.
+
+::: table {#raw-data}
+| Optimization | TTR (ms)         | TTA (ms)          | Storage (MB)     | Publish Time (ms)   |
+|--------------|-----------------:|------------------:|-----------------:|--------------------:|
+| none         |      989 \pm 257 |     1640 \pm 656 |     31.3 \pm 20.3 |                     |
+| +prep        |      986 \pm 275 |     1637 \pm 688 |     31.3 \pm 20.3 |        3051 \pm 930 |
+| +cache       |      826 \pm 221 |     1132 \pm 567 |     42.6 \pm 34.8 |        3123 \pm 950 |
+| +prerender   |      156 \pm 15  |     1114 \pm 565 |     42.6 \pm 34.9 |        3113 \pm 960 |
+
+| Average TTR, TTA, Storage Cost, and Publishing Time ($\pm \sigma$) across visualizations and dataset sizes.
+\vspace{-10pt}
+:::
 
 ::: figure {#optimizations}
 ![Latencies of Visualization Specifications](assets/optimizations.png)
 | Time-to-Render (TTR, top) and Time-to-Activation (TTA, bottom) across specifications, dataset sizes, and optimizations. Lines show median times in milliseconds, while shaded areas indicate interquartile ranges.
 \vspace{-12pt}
 :::
-
-We evaluate the performance impact of the Mosaic Publisher across five visualization specifications (@fig:collage) selected to represent a diverse range of interaction styles, view configurations, and query complexities. These include: **airlines**, a single-view chart with a filter slider and confidence interval overlays; **property**, a raster density plot with interactive regression fits; **flights**, a basic cross-filtering example with linked histograms; **gaia** and **taxis**, complex multi-view dashboards with high-resolution rasters and multiple coordinated selections. (Both the flights and gaia example are taken from the original Mosaic paper [@doi:10.1109/TVCG.2023.3327189].) These examples cover both low and high cardinality selections, different types of interval filtering, and visualization types that stress different optimization paths.
-
-::: table {#raw-data}
-| Optimization | TTR (ms)         | TTA (ms)          | Storage (MB)     | Publish Time (ms)   |
-|--------------|-----------------:|------------------:|-----------------:|--------------------:|
-| none         |      989 \pm 257 |     1640 \pm 656 |     31.3 \pm 20.3 |        3090 \pm 907 |
-| minimal      |      986 \pm 275 |     1637 \pm 688 |     31.3 \pm 20.3 |        3051 \pm 930 |
-| more         |      826 \pm 221 |     1132 \pm 567 |     42.6 \pm 34.8 |        3123 \pm 950 |
-| most         |      156 \pm 15  |     1114 \pm 565 |     42.6 \pm 34.9 |        3113 \pm 960 |
-
-| Average TTR, TTA, Storage Cost, and Publishing Time ($\pm \sigma$) across visualizations and dataset sizes.
-\vspace{-10pt}
-:::
-
-To assess the effects of each optimization category (@sec:characterization), we apply them incrementally: **none** performs all computation at runtime, **+prep** applies data preparation and projection rewrites, **+cache** further precomputes and stores both result caches and materialized aggregates for interaction updates, and **+prerender** adds initial pre-rendered visual outputs with hydration to enable interactivity.
-All benchmarks were run within Node.js v22.9.0 on a 2021 MacBook Pro laptop (14-inch, macOS 15.2) with an M1 Pro processor and 16GB RAM. The visualizations were hosted on a local server with DuckDB-WASM used as the backing database engine.
 
 @fig:optimizations confirms that without publish-time optimization, both TTR and TTA scale poorly with increasing data size---especially beyond one million rows---due to runtime query execution and rendering.
 Preparation alone (+prep) did not help the tested visualizations as they don't involve preparatory transformation and don't have extraneous columns; however, it is expected to provide more benefit for visualizations that operate over wide tables with many unvisualized columns or have non-trivial preparation queries.
@@ -287,23 +297,23 @@ Pre-rendering (+prerender) consistently achieves the lowest TTR across all visua
 <!-- \vspace{-18pt} -->
 :::
 
-::: table {#breakdown-raw}
-| Optimization | \Delta SC (%)     | \Delta TTR (%) | \Delta TTA (%) |
-|--------------|------------------:|---------------:|---------------:|
-| +prep        |       0.0 \pm 0.0 |   -0.6 \pm 4.0 |   -1.0 \pm 2.5 |
-| +cache       |     21.1 \pm 29.8 |  -16.6 \pm 1.3 |  -32.3 \pm 8.9 |
-| +most        |     21.2 \pm 29.9 |  -83.7 \pm 2.1 |  -33.3 \pm 9.6 |
-
-| Average percentage change ($\pm \sigma$) of metrics across visualizations and dataset sizes relative to no optimizations.
-\vspace{-10pt}
-:::
-
 @fig:breakdown further shows that despite removing runtime render cost, pre-rendering still incurs a hydration cost that is nearly equivalent to a full client-side render.
 Future work might explore finer-grained hydration or schemes to reduce this overhead.
 Browser loading and network transfer time remains a stable portion of total latency, with any differences being minor compared to the respective latency improvements, showing that the effect of storage cost in these examples was negligible.
 @tbl:breakdown-raw summarizes these effects numerically.
 Across specifications, dataset sizes, and optimizations, the average publishing time is only 1455.3ms $\pm$ 1779.0ms longer than the corresponding unoptimized TTA, making it a reasonable one-time cost.
 Overall, these results demonstrate that publish-time strategies can yield substantial performance improvements to TTR and TTA across interaction and visualization types.
+
+::: table {#breakdown-raw}
+| Optimization | \Delta SC (%)     | \Delta TTR (%) | \Delta TTA (%) |
+|--------------|------------------:|---------------:|---------------:|
+| +prep        |       0.0 \pm 0.0 |   -0.6 \pm 4.0 |   -1.0 \pm 2.5 |
+| +cache       |     21.1 \pm 29.8 |  -16.6 \pm 1.3 |  -32.3 \pm 8.9 |
+| +prerender   |     21.2 \pm 29.9 |  -83.7 \pm 2.1 |  -33.3 \pm 9.6 |
+
+| Average percentage changes ($\pm \sigma$) of Storage Cost (SC), Time to Render (TTR), and Time to Action (TTA) across visualizations and dataset sizes relative to no optimizations.
+\vspace{-10pt}
+:::
 
 # Conclusion {#conclusion}
 

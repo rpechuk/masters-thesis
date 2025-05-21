@@ -187,17 +187,19 @@
 % Example glossary environment (user should populate)
 % See uwthesis.cls for formatting
 \begin{glossary}
-\item[Publish-time optimizations] Shift computational work from run-time to deployment time.
-\item[Time-to-render (TTR)] The time it takes for a visualization to render after a user session starts.
-\item[Time-to-activation (TTA)] The time it takes for a visualization to become interactive after a user session starts.
-\item[Storage cost (SC)] The amount of storage required to store a visualization.
+\item[Publish-time optimizations] Optimization strategies executed during deployment, to improve visualization performance by reducing run-time latency.
+\item[Time-to-render (TTR)] The time it takes for a visualization to render after the initial user request.
+\item[Time-to-activation (TTA)] The time it takes for a visualization to be able to respond to any user interaction after the initial user request.
+\item[Storage cost (SC)] The amount of disk space or memory consumed by deployed visualization assets.
+\item[Hydration] The runtime process of adding interactive behaviors and logic to pre-rendered static visualizations, making them responsive to user actions.
+\item[Mosaic] An open-source visualization system that uses declarative specifications and query coordination, extended in this paper to integrate publish-time optimizations.
 \end{glossary}
 
 % Dedication (after preliminary pages, before main text)
 \clearpage
 \dedication{\begin{center}
   To my amazing family and girlfriend without whom this thesis would not have been possible.
-  Thank you for your love, support, and help.
+  Thank you for your help, love, and support.
 \end{center}}
 
 % Acknowledgments 
