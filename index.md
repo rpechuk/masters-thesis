@@ -35,12 +35,12 @@ output:
   3. Evaluation of Performance Gains
      - Quantified comparisons to a variety of non-optimized scenarios of TTFR, TTFI, storage cost, etc (?).
  -->
-::: teaser {#overview}
+<!-- ::: teaser {#overview}
 \vspace{-6pt}
 ![Diagram showing how publish-time optimizations reduce run-time latency and improve rendering and interaction performance in web-based visualizations.](assets/teaser.png)
 | Overview of publish-time optimization strategies for interactive visualizations. Shifting data preparation, optimization computations, and rendering to publish time improves both time-to-render (TTR) and time-to-activation (TTA).
 \vspace{-4pt}
-:::
+::: -->
 
 ::: abstract
 Fast loading and responsive interaction lead to more effective web-based visualizations.
@@ -56,6 +56,12 @@ TODO
 ::: -->
 
 # Introduction {#intro}
+
+::: figure {#overview}
+![Diagram showing how publish-time optimizations reduce run-time latency and improve rendering and interaction performance in web-based visualizations.](assets/teaser.png)
+| Overview of publish-time optimization strategies for interactive visualizations. Shifting data preparation, optimization computations, and rendering to publish time improves both time-to-render (TTR) and time-to-activation (TTA).
+\vspace{-16pt}
+:::
 
 Maintaining low latency in interactive visualizations is essential for supporting analysis and engagement; however, providing responsive performance in web-based visualization systems remains difficult [@doi:10.1109/TVCG.2020.3028891; @doi:10.1145/3639276].
 Even small delays can interrupt cognitive flow, reducing user engagement and insight generation [@doi:10.1145/2133806.2133821; @doi:10.1109/TVCG.2014.2346452; @doi:10.1037/1076-898X.6.4.322].
@@ -197,6 +203,13 @@ By characterizing these strategies, we provide guidance for selecting publish-ti
 
 # Implementation in Mosaic {#implementation}
 
+::: figure {#implementation-flow}
+![Flow of Mosaic Publisher](assets/implementation.png)
+\vspace{-10pt}
+| Implementation flow of publish-time optimizations in Mosaic Publisher. Visualization specifications are parsed into an Abstract Syntax Tree (AST), simulated interactions trigger necessary queries, which are precomputed and materialized. The AST is rewritten to reference these assets, reducing both rendering and interaction latencies at runtime.
+\vspace{-10pt}
+:::
+
 We implement publish-time optimizations in the Mosaic architecture [@doi:10.1109/TVCG.2023.3327189], atop declarative specifications of interactive visualizations.
 Mosaic's architecture decouples specification logic from data processing by managing query execution through a central coordinator, and provides reactive primitives for linking interactions.
 This design enables publish-time optimizations to be applied either transparently (by pre-populating cache and database content) or via simple, targeted specification rewrites to reference precomputed assets.
@@ -205,19 +218,13 @@ This design enables publish-time optimizations to be applied either transparentl
 
 Mosaic visualizations can be defined using data, view, and interaction specifications written in a declarative syntax.
 Our publish-time optimizations focus on YAML-based specifications, which are parsed into an abstract syntax tree (AST).
-The AST enables static analysis and specification rewriting to reference precomputed assets. This process is modeled in @fig:[TODO: ref new flow figure here].
+The AST enables static analysis and specification rewriting to reference precomputed assets. This process is modeled in @fig:implementation-flow.
 
 Mosaic uses a central _coordinator_, which manages query execution across multiple clients, typically backed by a DuckDB [@doi:10.1145/3299869.3320212] database.
 Query execution can occur locally in the browser (via DuckDB-WASM), on a local server, or on a remote database.
 This flexibility is key to supporting publish-time workflows, as precomputed assets can be generated independently of run-time execution environments using an in-process DuckDB instance.
 
 ## Specification Optimization and Rewriting
-
-::: figure {#implementation-flow}
-![Flow of Mosaic Publisher](assets/implementation.png)
-| Implementation flow of publish-time optimizations in Mosaic Publisher. Visualization specifications are parsed into an Abstract Syntax Tree (AST), simulated interactions trigger necessary queries, which are precomputed and materialized. The AST is rewritten to reference these assets, reducing both rendering and interaction latencies at runtime.
-\vspace{-10pt}
-:::
 
 We developed **Mosaic Publisher**, a utility that analyzes visualization specifications, simulates interactions, and rewrites data definitions to reference precomputed assets.
 Specification rewrites occur automatically based on a user-selected optimization level, incrementally applying *data preparation and projection*, *aggregate and cache pre-computation*, and *visualization pre-rendering*.
@@ -226,7 +233,7 @@ This design allows visualization designers to benefit from publish-time optimiza
 The publisher performs the following steps:
 
 1. **Specification Parsing**: Parse the YAML specification into an abstract syntax tree (AST) which can be rendered into a DOM using vgplot [@doi:10.1109/TVCG.2023.3327189], a visualization grammar for Mosaic-based web visualizations.
-2. **Run-time Simulation**: Render the AST into a virtual DOM, programmatically activating interactors and inputs to trigger and capture all setup and interaction queries that could be issued during runtime.
+2. **Run-time Simulation**: Render the AST into a headless DOM, programmatically activating interactors and inputs to trigger and capture all setup and interaction queries that could be issued during runtime.
 3. **Query Materialization**: Execute data preparation, initial loading, and pre-aggregation queries saving the results as deployable assets.
 4. **AST Rewriting**: Replace data loading and preparation queries in the specification AST with references to precomputed results.
 5. **Hydration Support**: Emit JavaScript code to populate the Mosaic cache and database with pre-computed assets. For pre-rendered views, generate additional logic to initialize interactive components at runtime.
