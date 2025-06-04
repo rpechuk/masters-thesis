@@ -48,7 +48,7 @@ While run-time optimizations such as caching and data tiling improve interaction
 In this work, we investigate _publish-time optimizations_ that shift computational work ahead of user sessions to accelerate both loading and interaction.
 We organize the space of publish-time optimizations into categories of data preparation, pre-computation of data assets for optimization, and pre-rendering; and then reason about tradeoffs in terms of time-to-render (TTR), time-to-activation (TTA), and storage cost (SC).
 To assess their effectiveness, we implement publish-time optimizations for the open-source Mosaic architecture and evaluate their impact across varied visualizations and dataset sizes.
-On average, publish-time strategies reduced rendering latency by 83.7% and activation latency by 33.3%, demonstrating their value for improving the performance of web-based visualizations.
+On average in a remote deployment scenario, publish-time strategies reduced rendering latency by 87.4% and activation latency by 20.6%, demonstrating their value for improving the performance of web-based visualizations.
 :::
 
 ::: acknowledgments
