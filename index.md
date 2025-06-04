@@ -258,7 +258,7 @@ For interactive views, it outputs pre-rendered initial states alongside JavaScri
 Our current hydration approach simply instantiates interactive components through the standard client-side rendering process; we leave more nuanced hydration methods to future work.
 
 By leveraging Mosaic's declarative specifications, coordination mechanisms, and centralized query management, our implementation enables publish-time optimizations to be integrated seamlessly, rewriting specifications where necessary, while preserving the expressiveness and flexibility of the Mosaic system.
-The Mosaic Publisher implementation is available at _anonymized URL_.
+The Mosaic Publisher implementation is available at [https://github.com/uwdata/mosaic-publish](https://github.com/uwdata/mosaic-publish).
 
 # Evaluation {#evaluation}
 
