@@ -51,9 +51,9 @@ To assess their effectiveness, we implement publish-time optimizations for the o
 On average, publish-time strategies reduced rendering latency by 83.7% and activation latency by 33.3%, demonstrating their value for improving the performance of web-based visualizations.
 :::
 
-<!-- ::: acknowledgments
-TODO
-::: -->
+::: acknowledgments
+I would like to extend a heartfelt thank you to my advisor, Jeffery Heer, for his guidance, patience, and to our many thoughtful conversations that shaped this thesis. Thank you as well to my amazing family and my girlfriend---your love, support, and willingness to let me constantly talk about my research made this work possible.
+:::
 
 # Introduction {#intro}
 
@@ -271,53 +271,60 @@ The Mosaic Publisher implementation is available at _anonymized URL_.
 We evaluate the performance impact of the Mosaic Publisher across five visualization specifications (@fig:collage) selected to represent a diverse range of interaction styles, view configurations, and query complexities. These include: **airlines**, a single-view chart with a filter slider and confidence interval overlays; **property**, a raster density plot with interactive regression fits; **flights**, a basic cross-filtering example with linked histograms; **gaia** and **taxis**, complex multi-view dashboards with high-resolution rasters and multiple coordinated selections. (Both the flights and gaia example are taken from the original Mosaic paper [@doi:10.1109/TVCG.2023.3327189].) These examples cover both low and high cardinality selections, different types of interval filtering, and visualization types that stress different optimization paths.
 
 To assess the effects of each optimization category (@sec:characterization), we apply them incrementally: **none** performs all computation at runtime, **+prep** applies data preparation and projection rewrites, **+cache** further precomputes and stores both result caches and materialized aggregates for interaction updates, and **+prerender** adds initial pre-rendered visual outputs with hydration to enable interactivity.
-All benchmarks were run within Node.js v22.9.0 on a 2021 MacBook Pro laptop (14-inch, macOS 15.2) with an M1 Pro processor and 16GB RAM. The visualizations were hosted on a local server with DuckDB-WASM used as the backing database engine.
+All benchmarks were run within Node.js v22.9.0 on a 2021 MacBook Pro laptop (14-inch, macOS 15.2) with an M1 Pro processor and 16GB RAM. Each visualization was accessed locally and tested in two hosting scenarios, local deployment and remote deployment. The remote server used for hosting has 2 14-core 2.6 GHz Intel Xeon Gold processors and 192 GB of RAM running Rocky Linux 9.1, and was accessed from 3 miles away over a WiFi router with a 80Gb/s internet connection. In both hosting scenarios the visualizations used DuckDB-WASM as the backing database engine.
 
-::: table {#raw-data}
+::: table {#raw-data position="h"}
+\vspace{8pt}
 | Optimization | TTR (ms)         | TTA (ms)          | Storage (MB)     | Publish Time (ms)   |
 |--------------|-----------------:|------------------:|-----------------:|--------------------:|
-| none         |      989 \pm 257 |     1640 \pm 656 |     31.3 \pm 20.3 |                     |
-| +prep        |      986 \pm 275 |     1637 \pm 688 |     31.3 \pm 20.3 |        3051 \pm 930 |
-| +cache       |      826 \pm 221 |     1132 \pm 567 |     42.6 \pm 34.8 |        3123 \pm 950 |
-| +prerender   |      156 \pm 15  |     1114 \pm 565 |     42.6 \pm 34.9 |        3113 \pm 960 |
-
-| Average TTR, TTA, Storage Cost, and Publishing Time ($\pm \sigma$) across visualizations and dataset sizes.
-\vspace{-10pt}
+| none         |    2117 \pm 1426 |    2763 \pm 1863 |     31.3 \pm 20.3 |                     |
+| +prep        |    2026 \pm 1234 |    2666 \pm 1679 |     31.3 \pm 20.3 |        3060 \pm 942 |
+| +cache       |    1881 \pm 1216 |    2463 \pm 1926 |     44.4 \pm 37.8 |        3143 \pm 973 |
+| +prerender   |       181 \pm 18 |    2393 \pm 1899 |     44.5 \pm 37.9 |        3112 \pm 995 |
+\vspace{-8pt}
+| Average TTR, TTA, Storage Cost, and Publishing Time ($\pm \sigma$) across visualizations and dataset sizes for the remote deployment scenario.
+\vspace{-8pt}
 :::
 
 ::: figure {#optimizations}
 ![Latencies of Visualization Specifications](assets/optimizations.png)
-| Time-to-Render (TTR, top) and Time-to-Activation (TTA, bottom) across specifications, dataset sizes, and optimizations. Lines show median times in milliseconds, while shaded areas indicate interquartile ranges.
-\vspace{-12pt}
+\vspace{-10pt}
+| Time-to-Render (TTR, top) and Time-to-Activation (TTA, bottom) across deployment scenarios, specifications, dataset sizes, and optimizations. Lines show median times in milliseconds, while shaded areas indicate interquartile ranges.
+\vspace{-10pt}
 :::
 
-@fig:optimizations confirms that without publish-time optimization, both TTR and TTA scale poorly with increasing data size---especially beyond one million rows---due to runtime query execution and rendering.
+@fig:optimizations confirms that without publish-time optimization, both TTR and TTA scale poorly with increasing data size---especially beyond one million rows---due to runtime query execution and rendering. 
 Preparation alone (+prep) did not help the tested visualizations as they don't involve preparatory transformation and don't have extraneous columns; however, it is expected to provide more benefit for visualizations that operate over wide tables with many unvisualized columns or have non-trivial preparation queries.
 Precomputing caches and aggregates (+cache) significantly reduces TTA, especially for datasets with 1M or more rows, enabling the system to respond more quickly to selection interactions.
 However, for smaller dataset sizes these assets can be computed quickly on-the-fly and optimization is not necessary.
 Pre-rendering (+prerender) consistently achieves the lowest TTR across all visualizations and dataset sizes, as rendering is performed entirely at publish time and loaded as static output (@fig:breakdown).
 
 ::: figure {#breakdown}
-\vspace{12pt}
+<!-- \vspace{12pt} -->
 ![Aggregated Latency and Storage Cost by Optimization Level](assets/latency.png)
-| Breakdown of latency components averaged across visualization specifications with a backing dataset of 10 million rows.
-<!-- \vspace{-18pt} -->
+\vspace{-16pt}
+| Breakdown of latency components averaged across visualization specifications and deployment scenarios with a backing dataset of 10 million rows.
+\vspace{-10pt}
 :::
 
 @fig:breakdown further shows that despite removing runtime render cost, pre-rendering still incurs a hydration cost that is nearly equivalent to a full client-side render.
 Future work might explore finer-grained hydration or schemes to reduce this overhead.
-Browser loading and network transfer time remains a stable portion of total latency, with any differences being minor compared to the respective latency improvements, showing that the effect of storage cost in these examples was negligible.
+In both deployment scenarios, browser loading and initial network transfer time remains a stable portion of total latency, with any differences being minor compared to the respective latency improvements, showing that the effect of storage cost in these examples was negligible.
 @tbl:breakdown-raw summarizes these effects numerically.
+Additionally, @fig:optimizations and @tbl:breakdown-raw show that deploying remotely leads to +cache having a smaller impact on TTR and TTA as compared to local deployment. This can be attributed to the fact that in remote deployment, additional assets must be transferred over the network during hydration, partially offsetting the benefit of pre-computing and storing them.
 Across specifications, dataset sizes, and optimizations, the average publishing time is only 1455.3ms $\pm$ 1779.0ms longer than the corresponding unoptimized TTA, making it a reasonable one-time cost.
 Overall, these results demonstrate that publish-time strategies can yield substantial performance improvements to TTR and TTA across interaction and visualization types.
 
 ::: table {#breakdown-raw}
-| Optimization | \Delta SC (%)     | \Delta TTR (%) | \Delta TTA (%) |
-|--------------|------------------:|---------------:|---------------:|
-| +prep        |       0.0 \pm 0.0 |   -0.6 \pm 4.0 |   -1.0 \pm 2.5 |
-| +cache       |     21.1 \pm 29.8 |  -16.6 \pm 1.3 |  -32.3 \pm 8.9 |
-| +prerender   |     21.2 \pm 29.9 |  -83.7 \pm 2.1 |  -33.3 \pm 9.6 |
-
+| Optimization | Deployment | \Delta SC (%)     | \Delta TTR (%) | \Delta TTA (%) |
+|--------------|------------|------------------:|---------------:|---------------:|
+| +prep        | Local      |       0.0 \pm 0.0 |   -0.6 \pm 4.0 |   -1.0 \pm 2.5 |
+|              | Remote     |       0.0 \pm 0.0 |   -0.4 \pm 9.9 |   -0.6 \pm 7.8 |
+| +cache       | Local      |     21.1 \pm 29.8 |  -16.6 \pm 1.3 |  -32.3 \pm 8.9 |
+|              | Remote     |     24.5 \pm 36.4 |  -10.1 \pm 7.0 | -17.4 \pm 10.5 |
+| +prerender   | Local      |     21.2 \pm 29.9 |  -83.7 \pm 2.1 |  -33.3 \pm 9.6 |
+|              | Remote     |     24.7 \pm 36.6 |  -87.4 \pm 6.3 | -20.6 \pm 10.9 |
+\vspace{-8pt}
 | Average percentage changes ($\pm \sigma$) of Storage Cost (SC), Time to Render (TTR), and Time to Action (TTA) across visualizations and dataset sizes relative to no optimizations.
 \vspace{-10pt}
 :::
